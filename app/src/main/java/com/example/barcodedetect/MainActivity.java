@@ -1,20 +1,24 @@
 package com.example.barcodedetect;
 
-import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.SparseArray;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.TextView;
-import com.google.android.gms.vision.Frame;
-import com.google.android.gms.vision.barcode.Barcode;
-import com.google.android.gms.vision.barcode.BarcodeDetector;
+import com.google.android.gms.vision.Frame;;
+import com.google.android.gms.vision.face.Face;
+import com.google.android.gms.vision.face.FaceDetector;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -27,28 +31,44 @@ public class MainActivity extends AppCompatActivity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                TextView txtView = (TextView) findViewById(R.id.txtContent);
 
                 ImageView myImageView = (ImageView) findViewById(R.id.imgview);
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inMutable=true;
                 Bitmap myBitmap = BitmapFactory.decodeResource(
                         getApplicationContext().getResources(),
-                        R.drawable.puppy);
-                myImageView.setImageBitmap(myBitmap);
+                        R.drawable.test2,
+                        options);
 
-                BarcodeDetector detector =
-                        new BarcodeDetector.Builder(getApplicationContext())
-                                .setBarcodeFormats(Barcode.DATA_MATRIX | Barcode.QR_CODE)
-                                .build();
-                if(!detector.isOperational()){
-                    txtView.setText("Could not set up the detector!");
+                Paint myRectPaint = new Paint();
+                myRectPaint.setStrokeWidth(5);
+                myRectPaint.setColor(Color.RED);
+                myRectPaint.setStyle(Paint.Style.STROKE);
+
+                Bitmap tempBitmap = Bitmap.createBitmap(myBitmap.getWidth(), myBitmap.getHeight(), Bitmap.Config.RGB_565);
+                Canvas tempCanvas = new Canvas(tempBitmap);
+                tempCanvas.drawBitmap(myBitmap, 0, 0, null);
+
+                FaceDetector faceDetector = new
+                        FaceDetector.Builder(getApplicationContext()).setTrackingEnabled(false)
+                        .build();
+                if(!faceDetector.isOperational()){
+                    new AlertDialog.Builder(v.getContext()).setMessage("Could not set up the face detector!").show();
                     return;
                 }
 
                 Frame frame = new Frame.Builder().setBitmap(myBitmap).build();
-                SparseArray<Barcode> barcodes = detector.detect(frame);
+                SparseArray<Face> faces = faceDetector.detect(frame);
 
-                Barcode thisCode = barcodes.valueAt(0);
-                txtView.setText(thisCode.rawValue);
+                for(int i=0; i<faces.size(); i++) {
+                    Face thisFace = faces.valueAt(i);
+                    float x1 = thisFace.getPosition().x;
+                    float y1 = thisFace.getPosition().y;
+                    float x2 = x1 + thisFace.getWidth();
+                    float y2 = y1 + thisFace.getHeight();
+                    tempCanvas.drawRoundRect(new RectF(x1, y1, x2, y2), 2, 2, myRectPaint);
+                }
+                myImageView.setImageDrawable(new BitmapDrawable(getResources(),tempBitmap));
 
             }
         });
